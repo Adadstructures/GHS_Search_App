@@ -144,7 +144,7 @@ if page == "Search Hymns":
 
                 top_hymns = find_best_hymns(query, hymn_titles, hymn_lyrics, hymn_embeddings)
 
-                st.subheader("🎶 Top 3 Hymns:")
+                st.subheader("🎶 Recommended Hymns:")
                 for i, (title, lyrics, score) in enumerate(top_hymns, 1):
                     st.markdown(f"## {i}. {title}")  
 
@@ -166,7 +166,7 @@ elif page == "About & Contact":
     st.title("📌 About GHSSAv1")
     st.markdown(
         """
-        GHSSAv1 is a semantic search and retrieval system designed to recommend suitable hymns for users.  
+        **GHSSAv1** is a semantic search and retrieval system designed to recommend suitable hymns for users.  
         It leverages a **pretrained sentence transformer (all-mpnet-base-v2)** to search the Gospel Hymns and Songs (GHS) of the Deeper Life Christian Ministry.  
 
         Users can search using:
@@ -175,7 +175,8 @@ elif page == "About & Contact":
         - A line from a hymn  
         - Any topic related to the Christian faith  
 
-        This tool aims to assist Christians in easily finding relevant hymns.
+        The tool aims to assist Christians in easily finding relevant hymns based on their search query, whether it’s a verse, hymn number, or lyrics.
+        
         """
     )
 
