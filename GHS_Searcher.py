@@ -94,13 +94,27 @@ def find_best_hymns(query, hymn_titles, hymn_lyrics, hymn_embeddings):
     
     return results
 
-# Function to fetch Bible verse from API
+# Function to fetch Bible verse from API (including handling chapter-only input)
 def fetch_bible_verse(reference):
     try:
-        url = f"https://bible-api.com/{reference}"
+        # Check if only the chapter is provided (e.g., "Deuteronomy 28")
+        if ":" not in reference:
+            # Assume it is a chapter and get a summary or full chapter
+            url = f"https://bible-api.com/{reference}+summary"
+        else:
+            url = f"https://bible-api.com/{reference}"
+
         response = requests.get(url)
         data = response.json()
-        return data["text"] if "text" in data else None
+
+        # Return the summary or full text of the verse/chapter
+        if "text" in data:
+            return data["text"]
+        elif "summary" in data:
+            return data["summary"]
+        else:
+            st.error(f"No text or summary found for reference: {reference}")
+            return None
     except Exception as e:
         st.error(f"Error fetching Bible verse: {e}")
         return None
@@ -123,6 +137,9 @@ if page == "Search Hymns":
 
     if st.button("Find Hymns"):
         if query:
+            hymns_found = False
+
+            # Check if it's a hymn number input
             if query.isdigit() and query in hymn_dict:
                 hymn_key = hymn_dict[query]
                 st.subheader(f"🎶 {hymn_key}")
@@ -135,20 +152,40 @@ if page == "Search Hymns":
                     f"<div style='font-size:20px; line-height:1.8; white-space:pre-wrap;'>{formatted_text}</div>",
                     unsafe_allow_html=True
                 )
+                hymns_found = True
 
-            else:
-                if any(char.isdigit() for char in query) and ":" in query:
-                    bible_text = fetch_bible_verse(query)
-                    if bible_text:
-                        query = bible_text  
+            # Check if it's a Bible verse or chapter reference
+            elif any(char.isdigit() for char in query) and ":" in query:
+                # Fetch Bible verse without displaying it
+                bible_text = fetch_bible_verse(query)
+                if bible_text:
+                    top_hymns = find_best_hymns(bible_text, hymn_titles, hymn_lyrics, hymn_embeddings)
+                    st.subheader("🎶 Recommended Hymns:")
+                    for i, (title, lyrics, score) in enumerate(top_hymns, 1):
+                        st.markdown(f"## {i}. {title}")  
 
+                        with st.expander(f"📖 View Lyrics for {title}"):
+
+                            formatted_lyrics = [f"***{line.strip()}***" if line.strip().lower().startswith(("verse", "refrain")) else line.strip() for line in lyrics.split("\n")]
+                            formatted_text = "\n".join(formatted_lyrics).replace("\n", "  \n")
+
+                            st.markdown(
+                                f"<div style='font-size:20px; line-height:1.8; white-space:pre-wrap;'>{formatted_text}</div>",
+                                unsafe_allow_html=True
+                            )
+
+                        st.write("---")  
+                    hymns_found = True
+
+            # Regular text or mixed input (e.g., text and Bible)
+            if not hymns_found:
                 top_hymns = find_best_hymns(query, hymn_titles, hymn_lyrics, hymn_embeddings)
-
                 st.subheader("🎶 Recommended Hymns:")
                 for i, (title, lyrics, score) in enumerate(top_hymns, 1):
                     st.markdown(f"## {i}. {title}")  
 
                     with st.expander(f"📖 View Lyrics for {title}"):
+
                         formatted_lyrics = [f"***{line.strip()}***" if line.strip().lower().startswith(("verse", "refrain")) else line.strip() for line in lyrics.split("\n")]
                         formatted_text = "\n".join(formatted_lyrics).replace("\n", "  \n")
 
