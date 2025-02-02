@@ -1,3 +1,4 @@
+
 import os
 import torch
 import re
@@ -65,36 +66,35 @@ def compute_embeddings(hymns):
     hymn_embeddings = model.encode(hymn_lyrics, convert_to_tensor=True)
     return hymn_titles, hymn_lyrics, hymn_embeddings
 
-# Improved Function to fetch Bible verse and handle mixed input
+# Function to fetch Bible verses
 def fetch_bible_verse(reference):
     try:
         url = f"https://bible-api.com/{reference}"
         response = requests.get(url)
         data = response.json()
 
-        # Return the summary or full text of the verse/chapter
         if "text" in data:
             return data["text"]
         elif "summary" in data:
             return data["summary"]
         else:
-            return None  # Return None if no valid text or summary found
+            return None
     except Exception as e:
         st.error(f"Error fetching Bible verse: {e}")
         return None
 
-# Enhanced Function to process mixed inputs
+# Function to process mixed input (hymn numbers, Bible references)
 def process_query(query):
-    bible_pattern = r"([1-3]?\s?[A-Za-z]+\s\d+:\d+)"  # Matches references like "Galatians 5:17"
+    bible_pattern = r"([1-3]?\s?[A-Za-z]+\s\d+:\d+)"
     bible_match = re.search(bible_pattern, query)
 
     if bible_match:
         bible_reference = bible_match.group(0)
         bible_text = fetch_bible_verse(bible_reference)
         if bible_text:
-            query = query.replace(bible_reference, bible_text)  # Replace reference with text
+            query = query.replace(bible_reference, bible_text)
         else:
-            query = query.replace(bible_reference, "")  # Remove the reference if not found
+            query = query.replace(bible_reference, "")
 
     return query.strip()
 
@@ -107,6 +107,19 @@ def find_best_hymns(query, hymn_titles, hymn_lyrics, hymn_embeddings):
     results = [(hymn_titles[i], hymn_lyrics[i], similarities[i].item()) for i in top_indices]
     
     return results
+
+# Function to get hymn by number
+def get_hymn_by_number(query, hymn_dict, hymns):
+    match = re.match(r"^(?:GHS\s*|)(\d+)$", query.strip(), re.IGNORECASE)
+
+    if match:
+        hymn_number = match.group(1)
+        hymn_key = hymn_dict.get(hymn_number)
+
+        if hymn_key and hymn_key in hymns:
+            return [(hymn_key, hymns[hymn_key], 1.0)]  # Exact match
+
+    return None
 
 # Load hymns and compute embeddings
 hymn_file = "hymns.txt"
@@ -126,9 +139,15 @@ if page == "Search Hymns":
 
     if st.button("Find Hymns"):
         if query:
-            query = process_query(query)  # Process the query to handle mixed inputs
+            # Check if the query is a hymn number
+            exact_hymn = get_hymn_by_number(query, hymn_dict, hymns)
 
-            top_hymns = find_best_hymns(query, hymn_titles, hymn_lyrics, hymn_embeddings)
+            if exact_hymn:
+                top_hymns = exact_hymn  # Display the exact hymn
+            else:
+                query = process_query(query)  # Handle Bible references
+                top_hymns = find_best_hymns(query, hymn_titles, hymn_lyrics, hymn_embeddings)
+
             st.subheader("🎶 Recommended Hymns:")
             for i, (title, lyrics, score) in enumerate(top_hymns, 1):
                 st.markdown(f"## {i}. {title}")  
@@ -154,17 +173,16 @@ elif page == "About & Contact":
 
         Users can search using:
         - A Bible verse in a specific format (e.g., *John 3:16*)
-        - The exact number of a hymn (e.g., *11* for GHS 11)
+        - The exact number of a hymn (e.g., *25* for GHS 25)
         - A line from a hymn  
         - Any topic related to the Christian faith  
 
-        The tool aims to assist Christians in easily finding relevant hymns based on their search query, whether it’s a verse, hymn number, or lyrics.
+        The tool aims to assist Christians in easily finding relevant hymns.
         """
     )
     st.title("📞 Contact")
     st.markdown(
         """
-        For queries, please reach out to:  
         **Teak-Tech Engineering | Temitope Dada**  
         📧 [topeemmanueldada@yahoo.co.uk](mailto:topeemmanueldada@yahoo.co.uk)  
         """
